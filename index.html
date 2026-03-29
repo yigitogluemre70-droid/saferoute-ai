@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeRoute AI - Afet Yonetim Sistemi</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"/>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0c1220;color:#c8d6e5;height:100vh;overflow:hidden}
+
+        /* ===== HEADER ===== */
+        .header{
+            background:linear-gradient(90deg,#0f1923 0%,#152238 50%,#1a3050 100%);
+            padding:10px 24px;display:flex;align-items:center;justify-content:space-between;
+            border-bottom:1px solid rgba(86,204,242,0.15);
+        }
+        .logo{display:flex;align-items:center;gap:12px}
+        .logo-icon{
+            width:38px;height:38px;border-radius:10px;
+            background:linear-gradient(135deg,#0ea5e9,#06b6d4);
+            display:flex;align-items:center;justify-content:center;font-size:1.1em;color:#fff;
+        }
+        .logo h1{font-size:1.25em;font-weight:700;color:#f0f4f8;letter-spacing:-0.5px}
+        .logo .sub{font-size:0.62em;color:#64748b;display:block;font-weight:400;letter-spacing:0.5px}
+        .hbadges{display:flex;gap:8px}
+        .hb{padding:5px 12px;border-radius:6px;font-size:0.72em;font-weight:500}
+        .hb.teal{background:rgba(6,182,212,0.12);color:#22d3ee;border:1px solid rgba(6,182,212,0.25)}
+        .hb.slate{background:rgba(100,116,139,0.15);color:#94a3b8;border:1px solid rgba(100,116,139,0.25)}
+
+        /* ===== LAYOUT ===== */
+        .main{display:grid;grid-template-columns:280px 1fr 320px;gap:10px;padding:10px;height:calc(100vh - 54px)}
+        .panel{background:#111a2e;border-radius:12px;border:1px solid rgba(86,204,242,0.08);display:flex;flex-direction:column;overflow:hidden}
+        .ph{padding:11px 16px;font-weight:600;font-size:0.82em;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(86,204,242,0.08);color:#e2e8f0}
+        .ph i{color:#22d3ee;font-size:0.9em}
+        .pb{padding:14px;overflow-y:auto;flex:1}
+
+        /* ===== CONTROLS ===== */
+        .cg{margin-bottom:14px}
+        .cg label{display:block;margin-bottom:5px;font-size:0.68em;color:#64748b;text-transform:uppercase;letter-spacing:1.2px;font-weight:600}
+
+        .sclist{display:flex;flex-direction:column;gap:4px}
+        .scb{
+            padding:9px 11px;border:1px solid rgba(255,255,255,0.06);border-radius:8px;
+            background:rgba(255,255,255,0.02);color:#cbd5e1;cursor:pointer;text-align:left;
+            font-size:0.78em;transition:all 0.2s;
+        }
+        .scb:hover{border-color:rgba(6,182,212,0.3);background:rgba(6,182,212,0.04)}
+        .scb.on{border-color:rgba(6,182,212,0.4);background:rgba(6,182,212,0.08)}
+        .scb b{display:block;color:#e2e8f0;font-size:0.95em}.scb small{color:#64748b}
+
+        .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+        .db{
+            padding:8px 4px;border:1px solid rgba(255,255,255,0.06);border-radius:8px;
+            background:rgba(255,255,255,0.02);color:#94a3b8;cursor:pointer;text-align:center;
+            font-size:0.74em;transition:all 0.2s;
+        }
+        .db:hover{border-color:rgba(6,182,212,0.3)}.db.on{border-color:#0ea5e9;background:rgba(14,165,233,0.1);color:#e2e8f0}
+        .db i{display:block;font-size:1.15em;margin-bottom:2px}
+
+        .btn1{
+            width:100%;padding:11px;
+            background:linear-gradient(135deg,#0ea5e9,#06b6d4);
+            border:none;border-radius:9px;color:#fff;font-size:0.88em;font-weight:600;
+            cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;
+            margin-top:10px;transition:all 0.25s;letter-spacing:0.3px;
+        }
+        .btn1:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(6,182,212,0.25)}
+        .btn2{
+            width:100%;padding:8px;background:rgba(100,116,139,0.12);
+            border:1px solid rgba(100,116,139,0.2);border-radius:7px;
+            color:#94a3b8;font-size:0.78em;cursor:pointer;margin-top:6px;transition:all 0.2s;
+        }
+        .btn2:hover{background:rgba(100,116,139,0.2);color:#cbd5e1}
+
+        .layer-toggles{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}
+        .ltog{
+            padding:3px 8px;font-size:0.67em;border:1px solid rgba(255,255,255,0.08);
+            border-radius:5px;background:rgba(255,255,255,0.02);color:#64748b;
+            cursor:pointer;transition:all 0.2s;
+        }
+        .ltog.on{background:rgba(6,182,212,0.1);border-color:rgba(6,182,212,0.3);color:#22d3ee}
+
+        /* ===== MAP ===== */
+        .map-tabs{display:flex;background:rgba(0,0,0,0.25);border-radius:12px 12px 0 0}
+        .mt{
+            flex:1;padding:9px;text-align:center;cursor:pointer;background:0;border:0;
+            color:#64748b;font-size:0.76em;border-bottom:2px solid transparent;transition:all 0.2s;
+        }
+        .mt.on{color:#22d3ee;border-bottom-color:#0ea5e9;background:rgba(6,182,212,0.05)}
+        #map{flex:1;border-radius:0 0 12px 12px;min-height:400px;z-index:1}
+
+        /* ===== RIGHT PANEL ===== */
+        .rs{margin-bottom:14px}
+        .rs h3{
+            font-size:0.78em;color:#22d3ee;margin-bottom:6px;padding-bottom:4px;
+            border-bottom:1px solid rgba(86,204,242,0.08);display:flex;align-items:center;gap:5px;
+            font-weight:600;
+        }
+        .sg{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+        .sc{background:rgba(255,255,255,0.03);padding:9px;border-radius:8px;text-align:center;border:1px solid rgba(255,255,255,0.04)}
+        .sc .v{font-size:1.15em;font-weight:700;display:block}
+        .sc .l{font-size:0.6em;color:#64748b;text-transform:uppercase;letter-spacing:0.5px}
+        .sc.safe .v{color:#34d399}.sc.warn .v{color:#fbbf24}.sc.dang .v{color:#f87171}.sc.info .v{color:#38bdf8}
+
+        .wl{list-style:none}
+        .wi{padding:7px 9px;margin-bottom:4px;border-radius:6px;font-size:0.73em;line-height:1.35;border-left:3px solid}
+        .wi.critical{background:rgba(248,113,113,0.08);border-color:#f87171}
+        .wi.high{background:rgba(251,146,60,0.08);border-color:#fb923c}
+        .wi.medium,.wi.warning{background:rgba(251,191,36,0.08);border-color:#fbbf24}
+        .wi.low{background:rgba(52,211,153,0.08);border-color:#34d399}
+
+        .stbl{width:100%;font-size:0.73em;border-collapse:collapse}
+        .stbl td{padding:4px 6px;border-bottom:1px solid rgba(255,255,255,0.03)}
+        .stbl td:first-child{color:#38bdf8;font-weight:600;white-space:nowrap}
+
+        .rcard{background:rgba(255,255,255,0.02);border-radius:7px;padding:9px;margin-bottom:6px;border:1px solid rgba(255,255,255,0.04)}
+        .rcard.on{border-color:rgba(6,182,212,0.3);background:rgba(6,182,212,0.04)}
+        .rb{height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;margin:4px 0}
+        .rf{height:100%;border-radius:2px;transition:width 1s}
+
+        .dmg-bar{display:flex;height:16px;border-radius:4px;overflow:hidden;margin:5px 0}
+        .dmg-seg{display:flex;align-items:center;justify-content:center;font-size:0.58em;font-weight:600;color:#fff}
+
+        .weather-card{background:rgba(255,255,255,0.03);border-radius:8px;padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:0.75em;border:1px solid rgba(255,255,255,0.04)}
+        .wc-big{font-size:1.8em;font-weight:800;text-align:center;grid-column:span 2;color:#38bdf8}
+
+        .loading{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(12,18,32,0.85);display:none;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:14px;backdrop-filter:blur(4px)}
+        .loading.on{display:flex}
+        .spin{width:42px;height:42px;border:3px solid rgba(6,182,212,0.2);border-top:3px solid #06b6d4;border-radius:50%;animation:sp 0.8s linear infinite}
+        @keyframes sp{to{transform:rotate(360deg)}}
+
+        .steps{list-style:none;margin:10px 0}
+        .step{display:flex;align-items:center;gap:7px;padding:4px 0;font-size:0.76em;color:#475569}
+        .step.on{color:#22d3ee}.step.ok{color:#34d399}.step i{width:16px;text-align:center}
+
+        ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(100,116,139,0.3);border-radius:2px}
+        .leaflet-routing-container{display:none!important}
+        @media(max-width:1200px){.main{grid-template-columns:260px 1fr}.rpanel{display:none}}
+    </style>
+</head>
+<body>
+<header class="header">
+    <div class="logo">
+        <div class="logo-icon"><i class="fas fa-satellite"></i></div>
+        <div><h1>SafeRoute AI</h1><span class="sub">Afet Yonetiminde Uydu Tabanli Akilli Rota Planlama</span></div>
+    </div>
+    <div class="hbadges">
+        <span class="hb teal"><i class="fas fa-satellite-dish"></i> Sentinel-2</span>
+        <span class="hb teal"><i class="fas fa-road"></i> OSRM</span>
+        <span class="hb slate"><i class="fas fa-flag"></i> TUA Astro Hackathon 2026</span>
+    </div>
+</header>
+
+<div class="main">
+<!-- LEFT -->
+<div class="panel">
+<div class="ph"><i class="fas fa-sliders-h"></i> Kontrol Paneli</div>
+<div class="pb">
+    <div class="cg">
+        <label>Senaryo</label>
+        <div class="sclist">
+            <div class="scb on" data-sc="kahramanmaras_earthquake" data-d="earthquake" data-lat="37.5858" data-lon="36.9371" data-z="13" onclick="selSc(this)">
+                <b><i class="fas fa-house-crack"></i> Kahramanmaras Depremi</b>
+                <small>6 Subat 2023 - Mw 7.8</small>
+            </div>
+            <div class="scb" data-sc="manavgat_fire" data-d="fire" data-lat="36.7867" data-lon="31.4433" data-z="12" onclick="selSc(this)">
+                <b><i class="fas fa-fire"></i> Manavgat Yangini</b>
+                <small>28 Temmuz 2021</small>
+            </div>
+            <div class="scb" data-sc="artvin_flood" data-d="flood" data-lat="41.1828" data-lon="41.8183" data-z="13" onclick="selSc(this)">
+                <b><i class="fas fa-water"></i> Artvin Sel Felaketi</b>
+                <small>14 Temmuz 2021</small>
+            </div>
+        </div>
+    </div>
+    <div class="cg">
+        <label>Afet Turu</label>
+        <div class="dgrid">
+            <div class="db on" data-t="earthquake" onclick="selD(this)"><i class="fas fa-house-crack"></i>Deprem</div>
+            <div class="db" data-t="fire" onclick="selD(this)"><i class="fas fa-fire"></i>Yangin</div>
+            <div class="db" data-t="flood" onclick="selD(this)"><i class="fas fa-water"></i>Sel</div>
+            <div class="db" data-t="landslide" onclick="selD(this)"><i class="fas fa-mountain"></i>Heyelan</div>
+        </div>
+    </div>
+
+    <button class="btn1" onclick="runFull()"><i class="fas fa-play"></i> Tam Analiz Baslat</button>
+    <button class="btn2" onclick="showSpectral()"><i class="fas fa-info-circle"></i> Spektral Bilgi (Makale)</button>
+
+    <ul class="steps" id="steps" style="display:none">
+        <li class="step" id="s1"><i class="fas fa-circle"></i> Uydu verisi analiz ediliyor...</li>
+        <li class="step" id="s2"><i class="fas fa-circle"></i> Acil durum verileri aliniyor...</li>
+        <li class="step" id="s3"><i class="fas fa-circle"></i> Risk haritasi olusturuluyor...</li>
+        <li class="step" id="s4"><i class="fas fa-circle"></i> Gercek yollardan rota hesaplaniyor...</li>
+        <li class="step" id="s5"><i class="fas fa-circle"></i> Haritaya isleniyor...</li>
+    </ul>
+
+    <div class="cg" style="margin-top:12px">
+        <label>Katmanlar</label>
+        <div class="layer-toggles">
+            <span class="ltog on" data-layer="hospitals" onclick="togLayer(this)"><i class="fas fa-hospital"></i> Hastane</span>
+            <span class="ltog on" data-layer="assembly" onclick="togLayer(this)"><i class="fas fa-campground"></i> Toplanma</span>
+            <span class="ltog on" data-layer="afad" onclick="togLayer(this)"><i class="fas fa-shield-alt"></i> AFAD</span>
+            <span class="ltog on" data-layer="earthquakes" onclick="togLayer(this)"><i class="fas fa-circle"></i> Deprem</span>
+            <span class="ltog on" data-layer="aftershock" onclick="togLayer(this)"><i class="fas fa-bullseye"></i> Artci</span>
+            <span class="ltog on" data-layer="buildings" onclick="togLayer(this)"><i class="fas fa-building"></i> Yikim</span>
+            <span class="ltog on" data-layer="route" onclick="togLayer(this)"><i class="fas fa-route"></i> Rota</span>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- CENTER -->
+<div class="panel" style="display:flex;flex-direction:column">
+    <div class="map-tabs">
+        <button class="mt on" onclick="setTile('osm',this)"><i class="fas fa-map"></i> Harita</button>
+        <button class="mt" onclick="setTile('sat',this)"><i class="fas fa-satellite-dish"></i> Uydu</button>
+        <button class="mt" onclick="setTile('topo',this)"><i class="fas fa-mountain"></i> Topografik</button>
+    </div>
+    <div id="map"></div>
+</div>
+
+<!-- RIGHT -->
+<div class="panel rpanel">
+<div class="ph"><i class="fas fa-chart-bar"></i> Analiz Sonuclari</div>
+<div class="pb" id="res">
+    <div style="text-align:center;padding:30px 0;color:#475569">
+        <i class="fas fa-satellite" style="font-size:2.2em;display:block;margin-bottom:10px;color:#1e293b"></i>
+        <p style="font-size:0.85em">"Tam Analiz Baslat" butonuna basin</p>
+        <p style="font-size:0.72em;margin-top:8px;color:#334155">Sentinel-2 spektral analiz + gercek yol rotasi + acil durum verileri</p>
+    </div>
+</div>
+</div>
+</div>
+
+<div class="loading" id="ld"><div class="spin"></div><div style="color:#22d3ee;font-size:0.9em" id="lt">Analiz...</div></div>
+
+<script>
+let map, curD='earthquake', curSc='kahramanmaras_earthquake';
+let scLat=37.5858, scLon=36.9371, scZ=13;
+let aData=null, eData=null;
+let layers={hospitals:null,assembly:null,afad:null,earthquakes:null,aftershock:null,buildings:null,route:null};
+let layerVis={hospitals:1,assembly:1,afad:1,earthquakes:1,aftershock:1,buildings:1,route:1};
+let tileL=null, routingControls=[];
+
+document.addEventListener('DOMContentLoaded',()=>{
+    map=L.map('map').setView([scLat,scLon],scZ);
+    tileL=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'OSM',maxZoom:19}).addTo(map);
+    for(let k in layers) layers[k]=L.layerGroup().addTo(map);
+    addEpicenter(scLat,scLon,'Kahramanmaras Depremi - Mw 7.8');
+    setTimeout(()=>map.invalidateSize(),100);
+});
+
+function setTile(t,btn){
+    document.querySelectorAll('.mt').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+    map.removeLayer(tileL);
+    const u={osm:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',sat:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',topo:'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png'};
+    tileL=L.tileLayer(u[t]||u.osm,{maxZoom:19}).addTo(map);
+}
+
+function addEpicenter(lat,lon,title){
+    const icon=L.divIcon({html:'<div style="background:#0ea5e9;width:20px;height:20px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 16px rgba(14,165,233,0.6);animation:pulse 2s infinite"></div>',iconSize:[20,20],iconAnchor:[10,10],className:''});
+    L.marker([lat,lon],{icon}).addTo(layers.earthquakes).bindPopup(`<b>${title}</b>`);
+}
+
+function selSc(el){
+    document.querySelectorAll('.scb').forEach(b=>b.classList.remove('on'));el.classList.add('on');
+    curSc=el.dataset.sc;scLat=+el.dataset.lat;scLon=+el.dataset.lon;scZ=+el.dataset.z;curD=el.dataset.d;
+    document.querySelectorAll('.db').forEach(b=>b.classList.toggle('on',b.dataset.t===curD));
+    map.setView([scLat,scLon],scZ);
+    for(let k in layers) layers[k].clearLayers();
+    routingControls.forEach(rc=>{try{map.removeControl(rc)}catch(e){}});routingControls=[];
+    const t={'kahramanmaras_earthquake':'Kahramanmaras Mw 7.8','manavgat_fire':'Manavgat Yangini','artvin_flood':'Artvin Sel'};
+    addEpicenter(scLat,scLon,t[curSc]||'');
+}
+function selD(el){document.querySelectorAll('.db').forEach(b=>b.classList.remove('on'));el.classList.add('on');curD=el.dataset.t}
+function togLayer(el){const ly=el.dataset.layer;el.classList.toggle('on');layerVis[ly]=!layerVis[ly];if(layers[ly]){if(layerVis[ly])map.addLayer(layers[ly]);else map.removeLayer(layers[ly])}}
+
+// ========== FULL ANALYSIS ==========
+async function runFull(){
+    showLoad('Kapsamli afet analizi...');showSteps();
+    try{
+        setSt(1);
+        const scenarioKey = curSc.split('_')[0];
+        const [dR,eR]=await Promise.all([
+            fetch('/api/demo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({disaster_type:curD,severity:'high',scenario:curSc})}),
+            fetch('/api/emergency-data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lat:scLat,lon:scLon,scenario:scenarioKey})})
+        ]);
+        aData=await dR.json();eData=await eR.json();
+        if(aData.error){alert(aData.error);hideLoad();return}
+
+        setSt(2);await slp(200);setSt(3);await slp(200);
+        addEmergencyToMap(eData);
+        setSt(4);await slp(200);
+        calculateRealRoute(eData);
+        setSt(5);await slp(200);doneSteps();
+        displayFullResults(aData,eData);
+        hideLoad();
+    }catch(e){alert(e.message);hideLoad()}
+}
+
+function addEmergencyToMap(data){
+    layers.hospitals.clearLayers();
+    (data.hospitals||[]).forEach(h=>{
+        const ic=L.divIcon({html:'<div style="background:#fff;color:#f87171;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;border:2px solid #f87171;box-shadow:0 2px 8px rgba(0,0,0,0.25)"><i class="fas fa-hospital"></i></div>',iconSize:[26,26],iconAnchor:[13,13],className:''});
+        L.marker([h.lat,h.lon],{icon:ic}).addTo(layers.hospitals).bindPopup(`<b>${h.name}</b><br>${h.type} | ${h.capacity} yatak<br>Acil: ${h.emergency?'Var':'Yok'} | Helipad: ${h.helipad?'Var':'Yok'}<br><b>${h.distance_km.toFixed(1)} km</b>`);
+    });
+
+    layers.assembly.clearLayers();
+    (data.assembly_points||[]).forEach(p=>{
+        const ic=L.divIcon({html:'<div style="background:#34d399;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.25)"><i class="fas fa-campground"></i></div>',iconSize:[24,24],iconAnchor:[12,12],className:''});
+        L.marker([p.lat,p.lon],{icon:ic}).addTo(layers.assembly).bindPopup(`<b>${p.name}</b><br>${p.capacity} kisi<br>${(p.facilities||[]).join(', ')}<br><b>${p.distance_km.toFixed(1)} km</b>`);
+    });
+
+    layers.afad.clearLayers();
+    (data.afad_units||[]).forEach(u=>{
+        const ic=L.divIcon({html:'<div style="background:#3b82f6;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid #fff"><i class="fas fa-shield-alt"></i></div>',iconSize:[24,24],iconAnchor:[12,12],className:''});
+        L.marker([u.lat,u.lon],{icon:ic}).addTo(layers.afad).bindPopup(`<b>${u.name}</b><br>${u.type}<br>${(u.resources||[]).join(', ')}`);
+    });
+
+    layers.earthquakes.clearLayers();
+    (data.recent_earthquakes||[]).forEach(eq=>{
+        const r=Math.max(4,eq.magnitude*3);
+        const c=eq.main?'#ef4444':eq.magnitude>=5?'#f97316':eq.magnitude>=4?'#eab308':'#a3e635';
+        L.circleMarker([eq.lat,eq.lon],{radius:r,color:c,fillColor:c,fillOpacity:0.5,weight:eq.main?3:1})
+            .addTo(layers.earthquakes).bindPopup(`<b>M${eq.magnitude} ${eq.type}</b><br>${eq.location}<br>${eq.date}<br>Derinlik: ${eq.depth} km`);
+    });
+
+    layers.aftershock.clearLayers();
+    (data.aftershock_zones||[]).forEach(z=>{
+        L.circle(z.center,{radius:z.radius_km*1000,color:z.color,fillColor:z.color,fillOpacity:0.04,weight:1,dashArray:'8,4'})
+            .addTo(layers.aftershock).bindPopup(`<b>${z.name}</b><br>${z.expected_magnitude}<br>${z.description}`);
+    });
+
+    layers.buildings.clearLayers();
+    (data.building_assessment?.urgent_rescue_sites||[]).forEach(s=>{
+        const ic=L.divIcon({html:`<div style="background:#1e1e1e;color:#fbbf24;width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid #fbbf24;font-weight:bold">${s.priority}</div>`,iconSize:[22,22],iconAnchor:[11,11],className:''});
+        L.marker([s.lat,s.lon],{icon:ic}).addTo(layers.buildings).bindPopup(`<b>${s.name}</b><br>${s.status}<br>Mahsur: ~${s.estimated_trapped} kisi<br>Oncelik: ${s.priority}`);
+    });
+}
+
+function calculateRealRoute(data){
+    layers.route.clearLayers();
+    routingControls.forEach(rc=>{try{map.removeControl(rc)}catch(e){}});routingControls=[];
+
+    const hospitals=data.hospitals||[];
+    const sites=data.building_assessment?.urgent_rescue_sites||[];
+
+    // Baslangic: Ilk kurtarma noktasi veya merkeze yakin nokta
+    let sLat=scLat+0.008, sLon=scLon-0.010;
+    if(sites.length>0){sLat=sites[0].lat;sLon=sites[0].lon;}
+
+    // Bitis: EN YAKIN hastane (bu senaryonun hastanesi)
+    let eLat=scLat, eLon=scLon;
+    if(hospitals.length>0){eLat=hospitals[0].lat;eLon=hospitals[0].lon;}
+
+    // Markerlar
+    const sI=L.divIcon({html:'<div style="background:#34d399;color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;border:3px solid #fff;box-shadow:0 3px 12px rgba(0,0,0,0.3);font-size:13px">B</div>',iconSize:[30,30],iconAnchor:[15,15],className:''});
+    const eI=L.divIcon({html:'<div style="background:#f87171;color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;border:3px solid #fff;box-shadow:0 3px 12px rgba(0,0,0,0.3);font-size:13px">H</div>',iconSize:[30,30],iconAnchor:[15,15],className:''});
+
+    L.marker([sLat,sLon],{icon:sI}).addTo(layers.route).bindPopup('<b>Baslangic</b><br>Kurtarma noktasi');
+    L.marker([eLat,eLon],{icon:eI}).addTo(layers.route).bindPopup(`<b>Hedef: ${hospitals.length>0?hospitals[0].name:'Hastane'}</b>`);
+
+    // OSRM rota - hastaneye
+    try{
+        const rc1=L.Routing.control({
+            waypoints:[L.latLng(sLat,sLon),L.latLng(eLat,eLon)],
+            router:L.Routing.osrmv1({serviceUrl:'https://router.project-osrm.org/route/v1'}),
+            lineOptions:{styles:[{color:'#0ea5e9',weight:5,opacity:0.85}]},
+            show:false,addWaypoints:false,routeWhileDragging:false,fitSelectedRoutes:false,showAlternatives:true,
+            altLineOptions:{styles:[{color:'#fbbf24',weight:3,opacity:0.6,dashArray:'10,6'}]},
+            createMarker:()=>null
+        }).addTo(map);
+        routingControls.push(rc1);
+
+        rc1.on('routesfound',e=>{
+            const r=e.routes[0];
+            const km=(r.summary.totalDistance/1000).toFixed(1);
+            const min=Math.ceil(r.summary.totalTime/60);
+            updateRouteInfo(km,min,e.routes.length,hospitals.length>0?hospitals[0].name:'Hastane');
+        });
+    }catch(e){
+        L.polyline([[sLat,sLon],[eLat,eLon]],{color:'#0ea5e9',weight:4,dashArray:'10,5'}).addTo(layers.route);
+    }
+
+    // 2. rota: Toplanma alanina
+    const aps=data.assembly_points||[];
+    if(aps.length>0){
+        try{
+            const rc2=L.Routing.control({
+                waypoints:[L.latLng(sLat,sLon),L.latLng(aps[0].lat,aps[0].lon)],
+                router:L.Routing.osrmv1({serviceUrl:'https://router.project-osrm.org/route/v1'}),
+                lineOptions:{styles:[{color:'#34d399',weight:3,opacity:0.6,dashArray:'8,5'}]},
+                show:false,addWaypoints:false,routeWhileDragging:false,fitSelectedRoutes:false,createMarker:()=>null
+            }).addTo(map);
+            routingControls.push(rc2);
+        }catch(e){}
+    }
+
+    map.setView([sLat,sLon],scZ);
+}
+
+function updateRouteInfo(km,min,altCount,hospName){
+    const el=document.getElementById('routeInfoDyn');
+    if(el) el.innerHTML=`<div style="font-size:0.75em;padding:6px;background:rgba(14,165,233,0.08);border-radius:5px;margin-top:5px;border:1px solid rgba(14,165,233,0.15)">
+        <b>Hedef:</b> ${hospName}<br><b>Mesafe:</b> ${km} km | <b>Sure:</b> ~${min} dk
+        ${altCount>1?`<br><span style="color:#fbbf24">+${altCount-1} alternatif</span>`:''}</div>`;
+}
+
+// ========== DISPLAY ==========
+function displayFullResults(a,e){
+    const p=document.getElementById('res');
+    const risk=a.risk_analysis?.statistics||{};
+    const route=a.route||{};
+    const pa=route.primary?.analysis||{};
+    const ss=pa.safety_score||0;
+    const sc2=ss>70?'#34d399':ss>40?'#fbbf24':'#f87171';
+    const spec=a.spectral_analysis||{};
+    const weather=e.weather||{};
+    const bldg=e.building_assessment||{};
+    const pop=e.population||{};
+    const rescue=e.rescue_resources||{};
+    const hospitals=e.hospitals||[];
+
+    let h=`
+    <div class="rs"><h3><i class="fas fa-shield-alt"></i> Guvenlik Skoru</h3>
+        <div style="text-align:center;padding:8px">
+            <div style="font-size:2.4em;font-weight:800;color:${sc2}">%${ss.toFixed(0)}</div>
+            <div style="font-size:0.72em;color:#64748b">${route.summary?.recommendation||''}</div>
+        </div>
+    </div>
+
+    <div class="rs"><h3><i class="fas fa-cloud-sun"></i> Hava Durumu</h3>
+        <div class="weather-card">
+            <div class="wc-big">${weather.temperature||0}&deg;C</div>
+            <div><i class="fas fa-thermometer-half"></i> Hissedilen: ${weather.feels_like||0}&deg;C</div>
+            <div><i class="fas fa-wind"></i> Ruzgar: ${weather.wind_speed||0} km/h</div>
+            <div><i class="fas fa-eye"></i> Gorunurluk: ${weather.visibility_km||0} km</div>
+            <div><i class="fas fa-cloud"></i> ${weather.condition||''}</div>
+        </div>`;
+    if(weather.alerts){h+=`<ul class="wl" style="margin-top:5px">`;weather.alerts.forEach(a2=>{h+=`<li class="wi high">${a2}</li>`});h+=`</ul>`}
+    if(weather.rescue_impact){
+        h+=`<div style="font-size:0.7em;padding:6px;background:rgba(248,113,113,0.06);border-radius:5px;margin-top:5px;border-left:3px solid #f87171">
+            <b>Kurtarma Etkisi:</b> ${weather.rescue_impact.recommendation}
+            <br>Helikopter: ${weather.rescue_impact.helicopter_ops} | Kara: ${weather.rescue_impact.ground_ops}</div>`;
+    }
+    h+=`</div>`;
+
+    // En yakin hastaneler
+    if(hospitals.length){
+        h+=`<div class="rs"><h3><i class="fas fa-hospital"></i> En Yakin Hastaneler</h3>`;
+        hospitals.slice(0,3).forEach((hp,i)=>{
+            h+=`<div style="font-size:0.72em;padding:5px 7px;margin:3px 0;background:rgba(255,255,255,0.02);border-radius:5px;display:flex;justify-content:space-between;border:1px solid rgba(255,255,255,0.04)">
+                <span>${i===0?'<b>':''}${hp.name}${i===0?'</b>':''}</span>
+                <span style="color:#38bdf8;font-weight:600">${hp.distance_km.toFixed(1)} km</span></div>`;
+        });
+        h+=`</div>`;
+    }
+
+    // Bina hasar
+    if(bldg.damage_categories){
+        const cats=bldg.damage_categories;
+        h+=`<div class="rs"><h3><i class="fas fa-building"></i> Bina Hasar</h3>
+            <div style="font-size:0.68em;color:#64748b;margin-bottom:4px">Toplam: ${(bldg.total_buildings_inspected||0).toLocaleString()} bina</div>
+            <div class="dmg-bar">`;
+        for(const[k,v] of Object.entries(cats)){h+=`<div class="dmg-seg" style="background:${v.color};width:${v.percentage}%" title="${v.label}">${v.percentage>5?'%'+v.percentage.toFixed(0):''}</div>`}
+        h+=`</div><div style="font-size:0.64em;display:flex;flex-wrap:wrap;gap:5px;margin-top:3px">`;
+        for(const[k,v] of Object.entries(cats)){h+=`<span><span style="display:inline-block;width:7px;height:7px;border-radius:1px;background:${v.color}"></span> ${v.label}: ${v.count.toLocaleString()}</span>`}
+        h+=`</div>`;
+        if(bldg.urgent_rescue_sites){
+            h+=`<div style="margin-top:6px;font-size:0.72em"><b>Acil Kurtarma:</b></div>`;
+            bldg.urgent_rescue_sites.forEach(s=>{
+                h+=`<div style="font-size:0.7em;padding:3px 6px;margin:2px 0;background:rgba(255,255,255,0.02);border-radius:3px;border-left:3px solid ${s.priority===1?'#f87171':'#fb923c'}">
+                    <b>P${s.priority}</b> ${s.name} - ~${s.estimated_trapped} mahsur</div>`;
+            });
+        }
+        h+=`</div>`;
+    }
+
+    // Nufus
+    if(pop.districts){
+        h+=`<div class="rs"><h3><i class="fas fa-users"></i> Nufus & Oncelik</h3>`;
+        pop.districts.slice(0,5).forEach(d=>{
+            const pc=d.priority==='critical'?'#f87171':d.priority==='high'?'#fb923c':'#fbbf24';
+            h+=`<div style="font-size:0.7em;padding:3px 6px;margin:2px 0;display:flex;justify-content:space-between;background:rgba(255,255,255,0.02);border-radius:3px">
+                <span>${d.name}</span><span>${d.population.toLocaleString()}</span>
+                <span style="color:${pc};font-weight:600;font-size:0.85em">${d.priority}</span></div>`;
+        });
+        h+=`</div>`;
+    }
+
+    // Kurtarma
+    if(rescue.search_rescue_teams){
+        h+=`<div class="rs"><h3><i class="fas fa-hands-helping"></i> Kurtarma</h3>`;
+        rescue.search_rescue_teams.forEach(t=>{
+            h+=`<div style="font-size:0.7em;padding:3px 6px;margin:2px 0;display:flex;justify-content:space-between;background:rgba(255,255,255,0.02);border-radius:3px">
+                <span>${t.name}</span><span>${t.personnel}</span>
+                <span style="color:${t.status==='aktif'?'#34d399':'#fbbf24'};font-size:0.85em">${t.status}</span></div>`;
+        });
+        if(rescue.vehicles){
+            h+=`<div style="margin-top:5px;font-size:0.7em"><b>Araclar:</b></div>`;
+            const vn={ambulance:'Ambulans',fire_truck:'Itfaiye',crane:'Vinc',excavator:'Kepce',helicopter:'Helikopter'};
+            for(const[k,v] of Object.entries(rescue.vehicles)){
+                const vc=v.status==='yetersiz'?'#f87171':v.status.includes('sinirli')||v.status.includes('imkansiz')?'#fbbf24':'#34d399';
+                h+=`<div style="display:flex;justify-content:space-between;padding:2px 6px;font-size:0.95em;background:rgba(255,255,255,0.01);margin:1px 0;border-radius:2px">
+                    <span>${vn[k]||k}</span><span>${v.active}/${v.total}</span><span style="color:${vc}">${v.status}</span></div>`;
+            }
+        }
+        h+=`</div>`;
+    }
+
+    // Spektral
+    if(spec?.metadata){
+        h+=`<div class="rs"><h3><i class="fas fa-satellite-dish"></i> Sentinel-2 Analiz</h3>
+            <table class="stbl"><tr><td>Olay</td><td>${spec.metadata.event||''}</td></tr>
+            <tr><td>Uydu</td><td>${spec.metadata.satellite||''} (${spec.metadata.resolution||''})</td></tr>
+            <tr><td>Once/Sonra</td><td>${spec.metadata.pre_date||''} / ${spec.metadata.post_date||''}</td></tr></table>`;
+        if(spec.indices){for(const[name,vals] of Object.entries(spec.indices)){
+            h+=`<div style="margin-top:5px;padding:5px;background:rgba(255,255,255,0.02);border-radius:5px">
+                <div style="font-weight:600;font-size:0.75em;color:#38bdf8">${name.replace(/_/g,' ')}</div>`;
+            for(const[k,v] of Object.entries(vals)){if(k==='description')continue;
+                h+=`<div style="display:flex;justify-content:space-between;font-size:0.68em;padding:1px 0"><span style="color:#64748b">${k.replace(/_/g,' ')}</span><span>${typeof v==='number'?v.toFixed(3):v}</span></div>`}
+            h+=`</div>`;
+        }}
+        h+=`</div>`;
+    }
+
+    // Rota
+    h+=`<div class="rs"><h3><i class="fas fa-route"></i> Rota</h3>
+        <div class="rcard on">
+            <div style="font-size:0.8em;font-weight:600;color:#0ea5e9"><i class="fas fa-location-arrow"></i> Hastaneye Rota</div>
+            <div style="font-size:0.68em;color:#64748b">OSRM - gercek yol agi</div>
+            <div id="routeInfoDyn"></div>
+            <div class="rb"><div class="rf" style="width:${ss}%;background:${sc2}"></div></div>
+        </div>
+        <div class="rcard">
+            <div style="font-size:0.8em;font-weight:600;color:#34d399"><i class="fas fa-campground"></i> Toplanma Alanina Rota</div>
+            <div style="font-size:0.68em;color:#64748b">En yakin AFAD toplanma noktasina</div>
+        </div>
+    </div>`;
+
+    // Risk
+    h+=`<div class="rs"><h3><i class="fas fa-chart-pie"></i> Risk Dagilimi</h3>
+        <div class="sg">
+            <div class="sc safe"><span class="v">%${(risk.safe_area_percent||0).toFixed(1)}</span><span class="l">Guvenli</span></div>
+            <div class="sc dang"><span class="v">%${(risk.dangerous_area_percent||0).toFixed(1)}</span><span class="l">Tehlikeli</span></div>
+        </div></div>`;
+
+    // Uyarilar
+    const allW=[...(a.disaster_analysis?.warnings||[]).map(w=>({...w,severity:w.risk>0.7?'critical':'high'})),
+        ...(a.risk_analysis?.hazards||[]).map(h2=>({message:h2.message+(h2.recommendation?' - '+h2.recommendation:''),severity:h2.severity||'medium'}))];
+    if(allW.length){h+=`<div class="rs"><h3><i class="fas fa-bell"></i> Uyarilar (${allW.length})</h3><ul class="wl">`;
+        allW.slice(0,10).forEach(w=>{h+=`<li class="wi ${w.severity||'medium'}">${w.message}</li>`});h+=`</ul></div>`}
+
+    p.innerHTML=h;
+}
+
+async function showSpectral(){
+    try{
+        const res=await fetch('/api/spectral-info');const data=await res.json();
+        let h=`<div class="rs"><h3><i class="fas fa-book"></i> Veri Kaynaklari</h3>`;
+        (data.data_sources?.primary_sources||[]).forEach(s=>{
+            h+=`<div style="padding:6px;margin-bottom:4px;background:rgba(255,255,255,0.02);border-radius:5px;font-size:0.73em;border:1px solid rgba(255,255,255,0.04)">
+                <div style="font-weight:600;color:#38bdf8">${s.name}</div>
+                <div style="color:#64748b">${s.data} | ${s.resolution} | ${s.cost}</div>
+                <div style="color:#475569">${s.use}</div></div>`;
+        });
+        (data.data_sources?.turkish_sources||[]).forEach(s=>{
+            h+=`<div style="padding:6px;margin-bottom:4px;background:rgba(255,255,255,0.02);border-radius:5px;font-size:0.73em;border:1px solid rgba(255,255,255,0.04)">
+                <div style="font-weight:600;color:#34d399">${s.name}</div>
+                <div style="color:#64748b">${s.data} | ${s.cost}</div></div>`;
+        });
+        const m=data.data_sources?.methodology_for_paper;
+        if(m){
+            h+=`<h3 style="margin-top:10px;color:#22d3ee;font-size:0.78em"><i class="fas fa-list-ol"></i> Metodoloji</h3>
+                <div style="font-size:0.73em;padding:6px;background:rgba(255,255,255,0.02);border-radius:5px">`;
+            m.steps.forEach(s=>{h+=`<div style="padding:2px 0;color:#94a3b8">${s}</div>`});
+            h+=`</div><h3 style="margin-top:10px;color:#22d3ee;font-size:0.78em"><i class="fas fa-quote-right"></i> Referanslar</h3>
+                <div style="font-size:0.7em;padding:6px;background:rgba(255,255,255,0.02);border-radius:5px">`;
+            m.references.forEach(r=>{h+=`<div style="padding:2px 0;color:#64748b">- ${r}</div>`});h+=`</div>`;
+        }
+        h+=`<h3 style="margin-top:10px;color:#22d3ee;font-size:0.78em"><i class="fas fa-wave-square"></i> Spektral Indeksler</h3>`;
+        for(const[k,idx] of Object.entries(data.indices||{})){
+            h+=`<div style="padding:6px;margin-bottom:4px;background:rgba(255,255,255,0.02);border-radius:5px;font-size:0.73em;border:1px solid rgba(255,255,255,0.04)">
+                <div style="font-weight:600;color:#38bdf8">${k}: ${idx.name}</div>
+                <div style="color:#fbbf24;font-family:monospace;font-size:0.95em">${idx.formula}</div>
+                <div style="color:#64748b">${idx.description}</div>
+                <div style="color:#475569">Kullanim: ${idx.use_case}</div></div>`;
+        }
+        h+=`</div>`;document.getElementById('res').innerHTML=h;
+    }catch(e){alert(e.message)}
+}
+
+function showLoad(t){document.getElementById('lt').textContent=t;document.getElementById('ld').classList.add('on')}
+function hideLoad(){document.getElementById('ld').classList.remove('on')}
+function showSteps(){document.getElementById('steps').style.display='block';for(let i=1;i<=5;i++){const e=document.getElementById('s'+i);e.className='step';e.querySelector('i').className='fas fa-circle'}}
+function setSt(n){for(let i=1;i<n;i++){const e=document.getElementById('s'+i);e.className='step ok';e.querySelector('i').className='fas fa-check-circle'}const c=document.getElementById('s'+n);c.className='step on';c.querySelector('i').className='fas fa-spinner fa-spin'}
+function doneSteps(){for(let i=1;i<=5;i++){const e=document.getElementById('s'+i);e.className='step ok';e.querySelector('i').className='fas fa-check-circle'}}
+function slp(ms){return new Promise(r=>setTimeout(r,ms))}
+</script>
+</body>
+</html>
